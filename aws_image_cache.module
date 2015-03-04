@@ -1,0 +1,70 @@
+<?php
+
+/**
+ * Implements hook_entity_insert()
+ *
+ * @param $entity
+ * @param $type
+ */
+function aws_image_cache_entity_insert($entity, $type) {
+  if ($type !== 'file') {
+    return;
+  }
+  if ($entity->type !== 'image') {
+    return;
+  }
+
+  // Yep we're generating all of them. It's a file entity fields don't matter.
+  foreach (image_styles() as $name => $style) {
+    if (empty($includes[0]) || in_array($style['name'], $includes)) {
+      $derivative_uri = image_style_path($style['name'], $entity->uri);
+      if (!file_exists($derivative_uri)) {
+        aws_image_cache_create_image_styles($style, $entity->uri, $derivative_uri);
+      }
+    }
+  }
+}
+
+/**
+ * Image Styles wrapper with HTTPRL Support.
+ *
+ * @param $style
+ * @param $uri
+ * @param $derivative_uri
+ * @return bool
+ */
+function aws_image_cache_create_image_styles($style, $uri, $derivative_uri) {
+  if (httprl_is_background_callback_capable()) {
+    // Setup callback options array; call function in the background.
+    $callback_options = array(
+      array(
+        'function' => 'aws_image_cache_create_image_styles_call',
+        'blocking' => FALSE,
+      ),
+      $style, $uri, $derivative_uri,
+    );
+
+    // Queue up the request.
+    httprl_queue_background_callback($callback_options);
+
+    // Execute request.
+    $return = httprl_send_request();
+  }
+  else {
+    $return = aws_image_cache_create_image_styles_call(image_style_create_derivative);
+  }
+  return $return;
+}
+
+
+/**
+ * Image Style Create derivative wrappers.
+ *
+ * @param $style
+ * @param $uri
+ * @param $derivative_uri
+ * @return bool
+ */
+function aws_image_cache_create_image_styles_call($style, $uri, $derivative_uri) {
+  return image_style_create_derivative($style, $uri, $derivative_uri);
+}

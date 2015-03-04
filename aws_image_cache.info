@@ -1,0 +1,6 @@
+name = AWS Image Cache
+description = Create image styles for AWS
+core = 7.x
+
+dependencies[] = file_entity
+dependencies[] = httprl
